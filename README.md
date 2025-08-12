@@ -12,6 +12,7 @@ The included `setup.sh` now installs an enhanced `zshrc()` helper that:
   - Optionally `~/.zsh_secrets` (not tracked)
 - Detects your editor (`code`, `subl`, `mate`, `bbedit`, `$EDITOR`, or falls back to `nano`) and waits for edits
 - Reloads `~/.zshrc` after you close the editor
+- If your `~/.zshrc` contains a loader for `~/.zshrc.d/` and the directory exists, the helper enters interactive modular mode; otherwise it opens only `~/.zshrc` (non-modular mode)
 
 This is designed to support a modular, safer layout:
 
@@ -75,7 +76,10 @@ For those who prefer manual configuration:
 
 ## Usage
 
-After setup, run `zshrc` and choose indexes to open. Examples:
+After setup, run `zshrc`.
+
+- Non-modular `.zshrc`: opens only `~/.zshrc`.
+- Modular `.zshrc` (loader detected): choose indexes to open. Examples:
 
 - `Enter` → open only `~/.zshrc`
 - `0 1 3` → open `~/.zshrc` and the 1st and 3rd files from `~/.zshrc.d`

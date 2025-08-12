@@ -65,15 +65,21 @@ zshrc() {
     editor=(nano)
   fi
 
-  # build selectable list from ~/.zshrc.d
-  local -a map_paths
-  local -i idx=1
+  # detect modular layout by scanning ~/.zshrc for a loader and checking ~/.zshrc.d exists
+  local has_modular=0
+  if [[ -d "$dir" ]] && command grep -Eqs '(\.zshrc\.d|zshrc\.d)' "$zrc"; then
+    # simple heuristic: presence of zshrc.d reference in .zshrc
+    has_modular=1
+  fi
 
-  echo "Select files to edit (space-separated). Press Enter for [0] only:"
-  printf "[0] %s\n" "$zrc"
+  if (( has_modular )); then
+    # interactive mode: build selectable list from ~/.zshrc.d
+    local -a map_paths
+    local -i idx=1
 
-  if [[ -d "$dir" ]]; then
-    # list *.zsh sorted
+    echo "Select files to edit (space-separated). Press Enter for [0] only:"
+    printf "[0] %s\n" "$zrc"
+
     local f
     while IFS= read -r f; do
       [[ -z "$f" ]] && continue
@@ -81,69 +87,70 @@ zshrc() {
       printf "[%d] %s\n" "$idx" "$f"
       ((idx++))
     done < <(command ls -1 "$dir"/*.zsh 2>/dev/null | sort)
-  else
-    echo "(no $dir present)"
-  fi
 
-  [[ -f "$secrets" ]] && echo "[S] $secrets"
-  echo "[A] All in ~/.zshrc.d (excludes secrets)"
+    [[ -f "$secrets" ]] && echo "[S] $secrets"
+    echo "[A] All in ~/.zshrc.d (excludes secrets)"
 
-  local reply
-  printf "> "
-  IFS=$' \t\n' read -r reply || true
-  reply=${reply:-0}
+    local reply
+    printf "> "
+    IFS=$' \t\n' read -r reply || true
+    reply=${reply:-0}
 
-  # collect chosen files
-  local -a files=()
-  local token
-  for token in $reply; do
-    case "$token" in
-      0) files+="$zrc" ;;
-      A|a)
-        files+="$zrc"
-        local i
-        for i in ${(k)map_paths}; do
-          files+="${map_paths[i]}"
-        done
-        ;;
-      S|s)
-        [[ -f "$secrets" ]] && files+="$secrets" || echo "(no $secrets)"
-        ;;
-      '' ) ;;
-      *)
-        if [[ "$token" == <-> ]]; then
-          local -i n=$token
-          if (( n >= 1 && n < idx )); then
-            files+="${map_paths[n]}"
+    # collect chosen files
+    local -a files=()
+    local token
+    for token in $reply; do
+      case "$token" in
+        0) files+="$zrc" ;;
+        A|a)
+          files+="$zrc"
+          local i
+          for i in ${(k)map_paths}; do
+            files+="${map_paths[i]}"
+          done
+          ;;
+        S|s)
+          [[ -f "$secrets" ]] && files+="$secrets" || echo "(no $secrets)"
+          ;;
+        '' ) ;;
+        *)
+          if [[ "$token" == <-> ]]; then
+            local -i n=$token
+            if (( n >= 1 && n < idx )); then
+              files+="${map_paths[n]}"
+            else
+              echo "(skip: invalid index $token)"
+            fi
           else
-            echo "(skip: invalid index $token)"
+            echo "(skip: unknown token '$token')"
           fi
-        else
-          echo "(skip: unknown token '$token')"
-        fi
-        ;;
-    esac
-  done
+          ;;
+      esac
+    done
 
-  # default when only Enter pressed: open main .zshrc
-  if (( ${#files[@]} == 0 )); then
-    files+="$zrc"
-  fi
-
-  # de-duplicate selections
-  local -A seen
-  local -a unique=()
-  local p
-  for p in "$files[@]"; do
-    [[ -z "$p" ]] && continue
-    if [[ -z "${seen[$p]}" ]]; then
-      unique+="$p"
-      seen[$p]=1
+    # default when only Enter pressed: open main .zshrc
+    if (( ${#files[@]} == 0 )); then
+      files+="$zrc"
     fi
-  done
 
-  # open in editor (wait when supported)
-  "${editor[@]}" "$unique[@]"
+    # de-duplicate selections
+    local -A seen
+    local -a unique=()
+    local p
+    for p in "$files[@]"; do
+      [[ -z "$p" ]] && continue
+      if [[ -z "${seen[$p]}" ]]; then
+        unique+="$p"
+        seen[$p]=1
+      fi
+    done
+
+    # open in editor (wait when supported)
+    "${editor[@]}" "$unique[@]"
+  else
+    # non-modular: open only ~/.zshrc
+    "${editor[@]}" "$zrc"
+  fi
 
   # reload main config
   if [[ -f "$zrc" ]]; then
