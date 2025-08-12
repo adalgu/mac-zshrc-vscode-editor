@@ -2,6 +2,31 @@
 
 This project provides a simple and efficient way to edit your `.zshrc` file using Visual Studio Code on macOS.
 
+### What's New (Modular .zshrc support)
+
+The included `setup.sh` now installs an enhanced `zshrc()` helper that:
+
+- Lets you interactively select which files to edit:
+  - `~/.zshrc`
+  - Any modular files under `~/.zshrc.d/*.zsh`
+  - Optionally `~/.zsh_secrets` (not tracked)
+- Detects your editor (`code`, `subl`, `mate`, `bbedit`, `$EDITOR`, or falls back to `nano`) and waits for edits
+- Reloads `~/.zshrc` after you close the editor
+
+This is designed to support a modular, safer layout:
+
+```
+~/.zshrc                  # minimal bootstrap loader
+~/.zshrc.d/
+  00-secrets.zsh          # sensitive vars (ignored by git)
+  10-paths.zsh            # PATH, JAVA_HOME, etc.
+  20-tools.zsh            # nvm, gcloud, pyenv init
+  30-conda.zsh            # conda init block
+  40-python-autoenv.zsh   # venv-first, conda fallback
+  60-aliases.zsh          # aliases and helper functions
+  99-local.zsh            # machine/temporary overrides
+```
+
 ## Why Use This Tool?
 
 Frequently modifying your `.zshrc` file is common, especially when working across different machines or setting up environments for various projects. While traditional editors like vi or vim are powerful, they can be cumbersome for quick edits. This tool offers several advantages:
@@ -39,18 +64,9 @@ For those who prefer manual configuration:
 
    Add this line to your `.zshrc` file.
 
-2. Add the `zshrc()` function to your `.zshrc`:
+2. Enhanced `zshrc()` helper
 
-   ```bash
-   # Function to edit .zshrc in VS Code and apply changes
-   function zshrc() {
-       code ~/.zshrc
-       echo "Press Enter after you've finished editing and saved the file."
-       read
-       source ~/.zshrc
-       echo ".zshrc has been updated and sourced."
-   }
-   ```
+   The setup script auto-installs the interactive `zshrc()` function. To install/update manually, copy the block between the markers `# >>> mac-zshrc-vscode-editor zshrc (v2) >>>` and `# <<< mac-zshrc-vscode-editor zshrc (v2) <<<` into your `~/.zshrc`.
 
 3. Source your `.zshrc` file:
    ```bash
@@ -59,7 +75,14 @@ For those who prefer manual configuration:
 
 ## Usage
 
-After setup, simply type `zshrc` in your terminal to edit your `.zshrc` file with VS Code. This makes it easy to:
+After setup, run `zshrc` and choose indexes to open. Examples:
+
+- `Enter` → open only `~/.zshrc`
+- `0 1 3` → open `~/.zshrc` and the 1st and 3rd files from `~/.zshrc.d`
+- `A` → open `~/.zshrc` and all `~/.zshrc.d/*.zsh`
+- `S` → include `~/.zsh_secrets` if it exists
+
+This makes it easy to:
 
 - Add new environment variables or modify existing ones
 - Set up API keys for different services
@@ -69,6 +92,14 @@ After setup, simply type `zshrc` in your terminal to edit your `.zshrc` file wit
 ## Troubleshooting
 
 If VS Code is not found, the setup script will prompt you to enter the path manually. Ensure you provide the correct path to the VS Code executable.
+
+### Security note
+
+Never commit secrets. Store API tokens in `~/.zsh_secrets` with restrictive permissions:
+
+```bash
+chmod 600 ~/.zsh_secrets
+```
 
 ## Contributing
 
