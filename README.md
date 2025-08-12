@@ -2,6 +2,70 @@
 
 This project provides a simple and efficient way to edit your `.zshrc` file using Visual Studio Code on macOS.
 
+### What's New (Modular .zshrc support)
+
+The included `setup.sh` now installs an enhanced `zshrc()` helper that:
+
+- Lets you interactively select which files to edit:
+  - `~/.zshrc`
+  - Any modular files under `~/.zshrc.d/*.zsh`
+  - Optionally `~/.zsh_secrets` (not tracked)
+- Detects your editor (`code`, `subl`, `mate`, `bbedit`, `$EDITOR`, or falls back to `nano`) and waits for edits
+- Reloads `~/.zshrc` after you close the editor
+- If your `~/.zshrc` contains a loader for `~/.zshrc.d/` and the directory exists, the helper enters interactive modular mode; otherwise it opens only `~/.zshrc` (non-modular mode)
+
+This is designed to support a modular, safer layout:
+
+```
+~/.zshrc                  # minimal bootstrap loader
+~/.zshrc.d/
+  00-secrets.zsh          # sensitive vars (ignored by git)
+  10-paths.zsh            # PATH, JAVA_HOME, etc.
+  20-tools.zsh            # nvm, gcloud, pyenv init
+  30-conda.zsh            # conda init block
+  40-python-autoenv.zsh   # venv-first, conda fallback
+  60-aliases.zsh          # aliases and helper functions
+  99-local.zsh            # machine/temporary overrides
+```
+
+### Minimal bootstrap for a modular `~/.zshrc`
+
+Add this loader to your `~/.zshrc` to automatically source numbered files from `~/.zshrc.d/`:
+
+```bash
+export ZDOTDIR="${ZDOTDIR:-$HOME}"
+setopt no_nomatch
+
+for f in "$HOME/.zshrc.d/"*.zsh; do
+  [ -r "$f" ] && source "$f"
+done
+```
+
+### Example snippets for `~/.zshrc.d/`
+
+- `00-secrets.zsh` (never commit; store real values in `~/.zsh_secrets`):
+
+```bash
+[ -f "$HOME/.zsh_secrets" ] && source "$HOME/.zsh_secrets"
+```
+
+- `10-paths.zsh`:
+
+```bash
+path_prepend() { [[ ":$PATH:" != *":$1:"* ]] && PATH="$1:$PATH"; }
+path_append()  { [[ ":$PATH:" != *":$1:"* ]] && PATH="$PATH:$1"; }
+
+path_prepend "$HOME/.local/bin"
+path_append  "/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+```
+
+- `20-tools.zsh` (example):
+
+```bash
+export NVM_DIR="$HOME/.nvm"
+[[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
+```
+
 ## Why Use This Tool?
 
 Frequently modifying your `.zshrc` file is common, especially when working across different machines or setting up environments for various projects. While traditional editors like vi or vim are powerful, they can be cumbersome for quick edits. This tool offers several advantages:
@@ -39,18 +103,9 @@ For those who prefer manual configuration:
 
    Add this line to your `.zshrc` file.
 
-2. Add the `zshrc()` function to your `.zshrc`:
+2. Enhanced `zshrc()` helper
 
-   ```bash
-   # Function to edit .zshrc in VS Code and apply changes
-   function zshrc() {
-       code ~/.zshrc
-       echo "Press Enter after you've finished editing and saved the file."
-       read
-       source ~/.zshrc
-       echo ".zshrc has been updated and sourced."
-   }
-   ```
+   The setup script auto-installs the interactive `zshrc()` function. To install/update manually, copy the block between the markers `# >>> mac-zshrc-vscode-editor zshrc (v2) >>>` and `# <<< mac-zshrc-vscode-editor zshrc (v2) <<<` into your `~/.zshrc`.
 
 3. Source your `.zshrc` file:
    ```bash
@@ -59,7 +114,17 @@ For those who prefer manual configuration:
 
 ## Usage
 
-After setup, simply type `zshrc` in your terminal to edit your `.zshrc` file with VS Code. This makes it easy to:
+After setup, run `zshrc`.
+
+- Non-modular `.zshrc`: opens only `~/.zshrc`.
+- Modular `.zshrc` (loader detected): choose indexes to open. Examples:
+
+- `Enter` → open only `~/.zshrc`
+- `0 1 3` → open `~/.zshrc` and the 1st and 3rd files from `~/.zshrc.d`
+- `A` → open `~/.zshrc` and all `~/.zshrc.d/*.zsh`
+- `S` → include `~/.zsh_secrets` if it exists
+
+This makes it easy to:
 
 - Add new environment variables or modify existing ones
 - Set up API keys for different services
@@ -69,6 +134,26 @@ After setup, simply type `zshrc` in your terminal to edit your `.zshrc` file wit
 ## Troubleshooting
 
 If VS Code is not found, the setup script will prompt you to enter the path manually. Ensure you provide the correct path to the VS Code executable.
+
+### Security note
+
+Never commit secrets. Store API tokens in `~/.zsh_secrets` with restrictive permissions:
+
+```bash
+chmod 600 ~/.zsh_secrets
+```
+
+### Quick migration checklist
+
+- Create `~/.zshrc.d/` and move related content from `~/.zshrc` into numbered files.
+- Put sensitive variables into `~/.zsh_secrets` and keep it out of git; set permissions with `chmod 600 ~/.zsh_secrets`.
+- Leave a minimal loader in `~/.zshrc` (see snippet above).
+- Run `zshrc` and use the interactive picker to edit modular files.
+
+### Optional: project-level `.env` with direnv
+
+- Install and hook: `brew install direnv` then add `eval "$(direnv hook zsh)"` in `~/.zshrc.d/20-tools.zsh`.
+- In each repo, add `.envrc` with `dotenv .env` and `layout python` as needed; run `direnv allow`.
 
 ## Contributing
 
