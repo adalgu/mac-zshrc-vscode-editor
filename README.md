@@ -28,6 +28,44 @@ This is designed to support a modular, safer layout:
   99-local.zsh            # machine/temporary overrides
 ```
 
+### Minimal bootstrap for a modular `~/.zshrc`
+
+Add this loader to your `~/.zshrc` to automatically source numbered files from `~/.zshrc.d/`:
+
+```bash
+export ZDOTDIR="${ZDOTDIR:-$HOME}"
+setopt no_nomatch
+
+for f in "$HOME/.zshrc.d/"*.zsh; do
+  [ -r "$f" ] && source "$f"
+done
+```
+
+### Example snippets for `~/.zshrc.d/`
+
+- `00-secrets.zsh` (never commit; store real values in `~/.zsh_secrets`):
+
+```bash
+[ -f "$HOME/.zsh_secrets" ] && source "$HOME/.zsh_secrets"
+```
+
+- `10-paths.zsh`:
+
+```bash
+path_prepend() { [[ ":$PATH:" != *":$1:"* ]] && PATH="$1:$PATH"; }
+path_append()  { [[ ":$PATH:" != *":$1:"* ]] && PATH="$PATH:$1"; }
+
+path_prepend "$HOME/.local/bin"
+path_append  "/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+```
+
+- `20-tools.zsh` (example):
+
+```bash
+export NVM_DIR="$HOME/.nvm"
+[[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
+```
+
 ## Why Use This Tool?
 
 Frequently modifying your `.zshrc` file is common, especially when working across different machines or setting up environments for various projects. While traditional editors like vi or vim are powerful, they can be cumbersome for quick edits. This tool offers several advantages:
@@ -104,6 +142,18 @@ Never commit secrets. Store API tokens in `~/.zsh_secrets` with restrictive perm
 ```bash
 chmod 600 ~/.zsh_secrets
 ```
+
+### Quick migration checklist
+
+- Create `~/.zshrc.d/` and move related content from `~/.zshrc` into numbered files.
+- Put sensitive variables into `~/.zsh_secrets` and keep it out of git; set permissions with `chmod 600 ~/.zsh_secrets`.
+- Leave a minimal loader in `~/.zshrc` (see snippet above).
+- Run `zshrc` and use the interactive picker to edit modular files.
+
+### Optional: project-level `.env` with direnv
+
+- Install and hook: `brew install direnv` then add `eval "$(direnv hook zsh)"` in `~/.zshrc.d/20-tools.zsh`.
+- In each repo, add `.envrc` with `dotenv .env` and `layout python` as needed; run `direnv allow`.
 
 ## Contributing
 
